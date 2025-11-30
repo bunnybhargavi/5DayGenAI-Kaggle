@@ -1,0 +1,33 @@
+graph TD
+    %% User Layer
+    User[Authorized User] -->|Request: 'Analyze Q3 Compliance'| Orch[LLDIA Orchestrator]
+
+    %% Infrastructure Layer (Local/Private)
+    subgraph "Local Secure Environment (Air-Gapped)"
+        
+        %% The Manager
+        Orch -->|State Update| Log[Immutable Audit Log (JSONL/SHA-256)]
+        
+        %% The Brain (Reasoning Core)
+        Orch -->|Prompt + Context| LLM[Local Inference Engine\n(Ollama: Llama 3.1 / Qwen 2.5)]
+        LLM -->|Thought & Tool Call| Orch
+        
+        %% The Hands (Execution Core)
+        Orch -->|Execute Call| Tools[Tool Executor]
+        
+        subgraph "Toolbox"
+            Tools -->|Fetch Data| DB_Tool[Local SQL Connector]
+            Tools -->|Classify Rows| ML_Tool[Classic ML Model\n(XGBoost/Scikit-Learn)]
+            Tools -->|Get Rules| Policy_Tool[Vector Store / Rule Dictionary]
+        end
+        
+        %% Data Sources
+        DB_Tool <-->|Read Only| LegacyDB[(Legacy Internal DB)]
+        ML_Tool <-->|Load Weights| Models[(Model Registry)]
+    end
+
+    %% Flow Back
+    Tools -->|Observation/Result| Orch
+    Orch -->|Updated Context| LLM
+    LLM -->|Final Narrative| Orch
+    Orch -->|Report Artifact| User
